@@ -91,6 +91,7 @@ export const upsertProfile = onCall({ region: 'us-central1', maxInstances: 10 },
       ownerUid: uid,
       status: previous?.status === 'suspended' ? 'suspended' : 'active',
       verificationStatus: previous?.verificationStatus ?? 'unverified',
+      ...(previous?.verificationRequestId ? { verificationRequestId: previous.verificationRequestId } : {}),
       linkVersion: (previous?.linkVersion ?? 0) + (isMoreRestrictive(previous, normalized) ? 1 : 0),
       createdAt: previous?.createdAt ?? FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -209,7 +210,7 @@ export const listSavedContacts = onCall({ region: 'us-central1', maxInstances: 1
     const live = target.exists && target.get('status') === 'active' && target.get('visibility') === 'public'
       ? projectProfile({ id: target.id, ...target.data() }, 'public')
       : null;
-    return { profile: live, unavailable: !live, note: relation.note ?? '', nickname: relation.nickname ?? '', tags: relation.tags ?? [], savedAt: relation.savedAt ?? null };
+    return { profileId: relation.profileId, profile: live, unavailable: !live, note: relation.note ?? '', nickname: relation.nickname ?? '', tags: relation.tags ?? [], savedAt: relation.savedAt ?? null };
   }));
   return { contacts };
 });
@@ -260,27 +261,27 @@ export const requestBusinessVerification = onCall({ region: 'us-central1', maxIn
   const uid = requireUser(request);
   await consumeRateLimit(uid, 'business-verification', 3, 24 * 60 * 60_000);
   const ref = profileRef(request.data?.profileId);
-  const profile = await ref.get();
-  if (!profile.exists || profile.get('ownerUid') !== uid || profile.get('type') !== 'business' || profile.get('status') !== 'active') {
-    throw new HttpsError('not-found', 'Business profile unavailable.');
-  }
-  if (profile.get('verificationStatus') === 'pending' && profile.get('verificationRequestId')) {
-    const existing = await db.collection('verificationRequests').doc(profile.get('verificationRequestId')).get();
-    if (existing.exists && existing.get('requesterUid') === uid && existing.get('status') === 'pending') {
-      return { requestId: existing.id, storagePath: `verificationEvidence/${uid}/${existing.id}/evidence` };
+  return db.runTransaction(async (transaction) => {
+    const profile = await transaction.get(ref);
+    if (!profile.exists || profile.get('ownerUid') !== uid || profile.get('type') !== 'business' || profile.get('status') !== 'active') {
+      throw new HttpsError('not-found', 'Business profile unavailable.');
     }
-  }
-  const requestRef = db.collection('verificationRequests').doc();
-  const batch = db.batch();
-  batch.create(requestRef, {
-    profileId: ref.id,
-    requesterUid: uid,
-    status: 'pending',
-    createdAt: FieldValue.serverTimestamp(),
+    if (profile.get('verificationStatus') === 'pending' && profile.get('verificationRequestId')) {
+      const existing = await transaction.get(db.collection('verificationRequests').doc(profile.get('verificationRequestId')));
+      if (existing.exists && existing.get('requesterUid') === uid && existing.get('status') === 'pending') {
+        return { requestId: existing.id, storagePath: `verificationEvidence/${uid}/${existing.id}/evidence` };
+      }
+    }
+    const requestRef = db.collection('verificationRequests').doc();
+    transaction.create(requestRef, {
+      profileId: ref.id,
+      requesterUid: uid,
+      status: 'pending',
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    transaction.update(ref, { verificationStatus: 'pending', verificationRequestId: requestRef.id, updatedAt: FieldValue.serverTimestamp() });
+    return { requestId: requestRef.id, storagePath: `verificationEvidence/${uid}/${requestRef.id}/evidence` };
   });
-  batch.update(ref, { verificationStatus: 'pending', verificationRequestId: requestRef.id, updatedAt: FieldValue.serverTimestamp() });
-  await batch.commit();
-  return { requestId: requestRef.id, storagePath: `verificationEvidence/${uid}/${requestRef.id}/evidence` };
 });
 
 export const listVerificationQueue = onCall({ region: 'us-central1', maxInstances: 5 }, async (request) => {
@@ -302,7 +303,11 @@ export const reviewBusinessVerification = onCall({ region: 'us-central1', maxIns
   if (!requestSnap.exists || requestSnap.get('status') !== 'pending') throw new HttpsError('not-found', 'Verification request unavailable.');
   const profileRefValue = db.collection('profiles').doc(requestSnap.get('profileId'));
   const profile = await profileRefValue.get();
-  if (!profile.exists || profile.get('ownerUid') !== requestSnap.get('requesterUid')) throw new HttpsError('failed-precondition', 'Verification target is unavailable.');
+  if (!profile.exists || profile.get('ownerUid') !== requestSnap.get('requesterUid')
+    || profile.get('verificationRequestId') !== requestId
+    || (decision === 'approve' && (profile.get('type') !== 'business' || profile.get('status') !== 'active'))) {
+    throw new HttpsError('failed-precondition', 'Verification target is unavailable.');
+  }
   if (decision === 'approve') {
     const evidencePath = `verificationEvidence/${requestSnap.get('requesterUid')}/${requestId}/evidence`;
     const evidence = getStorage().bucket(STORAGE_BUCKET).file(evidencePath);
@@ -324,7 +329,11 @@ export const reviewBusinessVerification = onCall({ region: 'us-central1', maxIns
     const currentRequest = await transaction.get(requestRef);
     const currentProfile = await transaction.get(profileRefValue);
     if (!currentRequest.exists || currentRequest.get('status') !== 'pending') throw new HttpsError('failed-precondition', 'Verification request has already been reviewed.');
-    if (!currentProfile.exists || currentProfile.get('ownerUid') !== currentRequest.get('requesterUid')) throw new HttpsError('failed-precondition', 'Verification target is unavailable.');
+    if (!currentProfile.exists || currentProfile.get('ownerUid') !== currentRequest.get('requesterUid')
+      || currentProfile.get('verificationRequestId') !== requestId
+      || (decision === 'approve' && (currentProfile.get('type') !== 'business' || currentProfile.get('status') !== 'active'))) {
+      throw new HttpsError('failed-precondition', 'Verification target is unavailable.');
+    }
     const profileData = { id: profileRefValue.id, ...currentProfile.data(), verificationStatus: result, updatedAt: FieldValue.serverTimestamp() };
     transaction.update(requestRef, { status: result, reviewNote: reviewNote.trim(), reviewedBy: moderatorUid, reviewedAt: FieldValue.serverTimestamp() });
     transaction.update(profileRefValue, { verificationStatus: result, verificationRequestId: FieldValue.delete(), updatedAt: FieldValue.serverTimestamp() });

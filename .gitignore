@@ -10,3 +10,7 @@ firestore-debug.log
 ui-debug.log
 functions/node_modules/
 emulator-data/
+
+# Browser test output
+test-results/
+playwright-report/

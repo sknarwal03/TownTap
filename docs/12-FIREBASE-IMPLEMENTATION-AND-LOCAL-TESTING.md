@@ -4,11 +4,11 @@
 
 ## Start locally
 
-1. Install the root and Functions dependencies with `npm install` and `npm --prefix functions install`.
-2. Copy `.env.emulator` to `.env.emulator.local` only if you need a local override; the checked-in demo values are emulator-only and are not credentials.
+1. Install the root and Functions dependencies with `npm ci` and `npm --prefix functions ci`.
+2. Create ignored `.env.emulator.local` with the demo-only values below. `.env.emulator` is not checked in. Preserve any existing local configuration.
 3. Run `npm run firebase:emulators` in one terminal and `npm run dev:emulator` in another. The app connects only to Auth, Firestore, Functions, and Storage emulators in this mode.
 4. Phone sign-in uses Firebase Auth Emulator. No SMS is sent; inspect the emulator terminal for its test code. The Auth Emulator does not model production anti-abuse limits.
-5. Run `npm test`, `npm run test:functions`, `npm run test:rules`, and `npm run test:functions:emulator` to run the automated checks. The Functions integration suite exercises profile create, private/public/link projections, link revocation/restriction, saved live views, and unauthenticated denial. Emulator checks do not prove deployed IAM, rules, billing, quotas, or live OTP configuration.
+5. Run `npm test`, `npm run test:functions`, `npm run test:rules`, and `npm run test:functions:emulator` to run the automated checks. The Functions integration suites exercise core card/privacy/saved flows plus moderator authorization, business evidence/review, report dismissal/unpublish and audit records. Emulator checks do not prove deployed IAM, rules, billing, quotas, or live OTP configuration.
 
 The supported local development path is the emulator mode above; development builds block live Firebase connections. Production builds require the real web project settings at build time. Never put Admin SDK credentials or service account keys in Vite variables.
 
@@ -46,6 +46,55 @@ Moderator functions check the Firebase Auth `moderator: true` custom claim. Prod
 
 ## Test and release boundaries
 
-Automated domain tests cover private defaults, schema validation, field projections, link restriction logic, directory projection, and pilot ranking. App-shell tests cover the preserved 12 screens, five nav areas, emulator wiring, and network-only service worker. Rule tests exercise default-deny Firestore and evidence Storage paths against local emulators. A focused callable Functions emulator integration suite covers core card/privacy/share/saved-contact behavior. Business verification/moderation lifecycle integration and real browser E2E suites are still outstanding.
+Automated domain tests cover private defaults, schema validation, field projections, link restriction logic, directory projection, and pilot ranking. App-shell tests cover the preserved 12 screens, five nav areas, emulator wiring, and network-only service worker. Rule tests exercise default-deny Firestore and evidence Storage paths against local emulators. Callable Functions emulator integration covers core card/privacy/share/saved-contact behavior and business verification/report/moderation lifecycles. Core Alpha browser E2E is covered below; business/moderation browser workflows, physical devices and assistive-technology checks remain outstanding.
 
 Local emulator success must not be described as production readiness. Before live release, review the physical data contract and open decisions in docs 04, 05, 07, 10, and 11; configure and independently review live rules/IAM, indexes, Storage bucket, App Check, OTP anti-abuse, quotas, retention, backups, monitoring, and release rollback. No deployment, billing change, production resource modification, or real OTP was performed for this implementation.
+
+## Core Alpha browser regression (2026-10-25)
+
+Use Node 24.12+ for the frontend/tooling dependencies (Firebase web SDK 13 and rules-unit-testing 6 declare this minimum), Java 21 for emulators, and Node 22 for the Functions runtime declared in `functions/package.json`. The cloud setup supplies Node 22 at `/workspace/.towntap-tools/node_modules/node/bin`; activate that path in the Functions emulator terminal. No live Firebase credentials are needed.
+
+Demo-only `.env.emulator.local`:
+
+```dotenv
+VITE_FIREBASE_API_KEY=demo-api-key
+VITE_FIREBASE_AUTH_DOMAIN=demo-towntap-local.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=demo-towntap-local
+VITE_FIREBASE_STORAGE_BUCKET=demo-towntap-local.appspot.com
+VITE_FIREBASE_APP_ID=demo-app-id
+VITE_USE_FIREBASE_EMULATORS=true
+```
+
+Run from the repository root:
+
+1. Install locked dependencies with `npm ci` and `npm --prefix functions ci`. Use the declared Node 22 runtime for the latter.
+2. Make Chromium available. Cloud uses `/usr/bin/chromium`; elsewhere run `npx playwright install chromium`, or set `CHROMIUM_PATH` to an installed Chromium executable.
+3. In one terminal run `npm run firebase:emulators`; in another run `npm run dev:emulator -- --host 127.0.0.1`.
+4. Wait for Auth, Firestore, Functions and Storage to report ready. Run `npm run test:e2e` in a third terminal. This runs two scenarios at desktop 1280×800 and mobile 390×844, four tests total. The suite uses real local emulator requests, retrieves test OTP codes from the demo Auth Emulator, and creates isolated owner/saver accounts. Test data remains local until the emulators stop.
+
+In this cloud, retain the normal proxy for emulator downloads from `storage.googleapis.com`. Once the artifacts are cached, run local Firebase CLI commands in a subshell with `unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy`. Firebase CLI 15.34.1 proxies its local Storage-to-Firestore calls despite NO_PROXY; this causes false Storage rule denials. Do not disable TLS/checksum verification or remove the proxy from package/download commands.
+
+Browser coverage includes emulator phone login, private defaults, card editing/publication, decoding the generated QR to its share URL, link-only phone projection, private email exclusion, saved notes/nickname/tags and search, refreshed owner edits, Public link revocation dropping link-only data, restrictive visibility with retained saver context and unsave, Unlisted link revocation, Hindi persistence, all twelve guest routes, invalid phone input, offline indication and horizontal overflow checks. Mobile coverage is Chromium viewport emulation, not a physical-device or screen-reader audit.
+
+A restricted saved contact now retains only its existing `profileId` reference and saver-owned context while `profile` remains null. This lets the saver edit notes or remove the saved reference without exposing the owner's private profile. Editor and saved-detail forms wait for route data; auth changes no longer load the same route twice and reset typed values.
+
+Failure traces are written under ignored `test-results/`; inspect with `npx playwright show-trace <trace.zip>`. Browser traces may contain demo account data and share links; do not publish them as production evidence.
+
+Business/moderation browser E2E, real OTP, physical-device QR scans, assistive technology and production operations remain separate work.
+
+## Business verification and moderation integration (2026-10-25)
+
+`npm run test:functions:emulator` now runs both `emulator-tests/*.integration.test.js` files: 10 tests total (2 core card tests and 8 business/moderation scenarios). It starts and stops Auth, Firestore, Functions and Storage itself, so stop only your own running emulators before using this command. In the cloud, use the cached artifacts and local proxy correction described above. Functions were validated on the declared Node 22 runtime.
+
+The new suite uses real Auth Emulator accounts and signed tokens, callable HTTP requests, and client Storage SDK uploads/downloads with rules enforced. The Admin SDK is used only for local fixture custom claims and inspecting persisted state/audit records; the suite refuses non-loopback emulator hosts and fixes the project to `demo-towntap-local`. No production reviewer roles or credentials are configured.
+
+Covered behavior:
+
+- Guests, ordinary users and false/string moderator claims cannot read queues, review verification or resolve reports. Other users cannot request verification for an owner's business.
+- The owner uploads evidence to the callable-issued path; unrelated users cannot upload/read it, while a moderator can read it. Approval updates request/reviewer/timestamps, owner and public badge state, discovery projection, queue membership and one audit record. Repeated review and post-review evidence replacement are denied. Direct moderator-client audit reads/writes remain denied.
+- Rejection removes the request from the pending queue, retains a non-verified public state and records the reviewer/audit. Missing evidence and a spoofed PNG declaration cannot approve a request or create an approval audit.
+- Pending business edits retain their verification request/evidence reference. Concurrent submissions reuse one pending request through a Firestore transaction.
+- Approval requires the current pending reference and an active business, checked again inside the review transaction. Converting a pending business to personal or suspending it prevents approval; rejected reviews can still close the current request without granting a badge.
+- Report dismissal leaves the listing active. Unpublish suspends the profile, increments the link version, removes discovery, denies guest/other-user card and old-link reads, and hides the live saved profile while retaining saver-owned context. Owner edits cannot republish a suspended listing. Each resolved report leaves exactly one attributed audit record, and repeated resolution is denied.
+
+These tests verify the existing draft workflow, not final business-evidence criteria, appeals, badge renewal/revocation policy, retention or production IAM/App Check. Those decisions remain in document 10. No deployment or live resource change was made.

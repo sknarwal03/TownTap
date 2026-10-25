@@ -224,6 +224,7 @@ function fieldControl(field, value = '', audience = 'private') {
 }
 
 function editorPage() {
+  if (state.loading) return `${heading('card-editor')}<p>${tr('loading')}</p>`;
   if (!state.user) return signedOutPrompt();
   const { params } = routeParts();
   const id = params.get('profileId');
@@ -255,16 +256,17 @@ function savedPage() {
   if (!state.user) return signedOutPrompt();
   const query = state.savedQuery.trim().toLocaleLowerCase();
   const items = state.saved.filter((item) => `${item.nickname} ${item.profile?.fields?.displayName ?? ''} ${item.profile?.fields?.category ?? ''} ${item.profile?.fields?.city ?? ''} ${item.note} ${(item.tags ?? []).join(' ')}`.toLocaleLowerCase().includes(query));
-  const rows = items.map((item) => `<article class="data-card"><div class="card-heading"><div class="grow"><h2>${escapeHtml(item.nickname || item.profile?.fields?.displayName || tr('restricted'))}</h2><p>${escapeHtml([item.profile?.fields?.category, item.profile?.fields?.city].filter(Boolean).join(' · '))}</p></div>${item.unavailable ? `<span class="badge warn">${tr('restricted')}</span>` : ''}</div>${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}<div class="tag-list">${(item.tags ?? []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div><div class="card-actions"><button class="small-button" data-action="saved-detail" data-id="${item.profile?.id ?? ''}">${tr('view')}</button>${item.profile?.id ? `<button class="small-button" data-action="remove-saved" data-id="${item.profile.id}">${tr('unsave')}</button>` : ''}</div></article>`).join('');
+  const rows = items.map((item) => `<article class="data-card"><div class="card-heading"><div class="grow"><h2>${escapeHtml(item.nickname || item.profile?.fields?.displayName || tr('restricted'))}</h2><p>${escapeHtml([item.profile?.fields?.category, item.profile?.fields?.city].filter(Boolean).join(' · '))}</p></div>${item.unavailable ? `<span class="badge warn">${tr('restricted')}</span>` : ''}</div>${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}<div class="tag-list">${(item.tags ?? []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div><div class="card-actions"><button class="small-button" data-action="saved-detail" data-id="${item.profileId ?? item.profile?.id ?? ''}">${tr('view')}</button>${(item.profileId ?? item.profile?.id) ? `<button class="small-button" data-action="remove-saved" data-id="${item.profileId ?? item.profile?.id}">${tr('unsave')}</button>` : ''}</div></article>`).join('');
   return `${heading('saved-contacts')}<label class="search-label">${tr('search')}<input type="search" id="savedSearch" value="${escapeHtml(state.savedQuery)}"></label>${rows || `<div class="empty-state">${tr('noSaved')}</div>`}`;
 }
 
 function savedDetailPage() {
+  if (state.loading) return `${heading('saved-detail')}<p>${tr('loading')}</p>`;
   if (!state.user) return signedOutPrompt();
   const { params } = routeParts();
-  const item = state.saved.find((saved) => saved.profile?.id === params.get('profileId'));
+  const item = state.saved.find((saved) => (saved.profileId ?? saved.profile?.id) === params.get('profileId'));
   if (!item) return `${heading('saved-detail')}<div class="empty-state">${tr('restricted')}</div>`;
-  return `${heading('saved-detail')}${item.profile ? profileCard(item.profile) : `<div class="notice">${tr('restricted')}</div>`}<form id="savedForm" class="form-card" data-profile-id="${item.profile.id}"><label>${tr('nickname')}<input name="nickname" maxlength="80" value="${escapeHtml(item.nickname)}"></label><label>${tr('note')}<textarea name="note" maxlength="1000">${escapeHtml(item.note)}</textarea></label><label>${tr('tags')}<input name="tags" maxlength="800" value="${escapeHtml((item.tags ?? []).join(', '))}"></label><div class="actions"><button class="button button-primary" type="submit">${tr('saveNote')}</button><button class="button button-secondary" type="button" data-action="remove-saved" data-id="${item.profile.id}">${tr('unsave')}</button></div></form>`;
+  return `${heading('saved-detail')}${item.profile ? profileCard(item.profile) : `<div class="notice">${tr('restricted')}</div>`}<form id="savedForm" class="form-card" data-profile-id="${item.profileId ?? item.profile?.id}"><label>${tr('nickname')}<input name="nickname" maxlength="80" value="${escapeHtml(item.nickname)}"></label><label>${tr('note')}<textarea name="note" maxlength="1000">${escapeHtml(item.note)}</textarea></label><label>${tr('tags')}<input name="tags" maxlength="800" value="${escapeHtml((item.tags ?? []).join(', '))}"></label><div class="actions"><button class="button button-primary" type="submit">${tr('saveNote')}</button><button class="button button-secondary" type="button" data-action="remove-saved" data-id="${item.profileId ?? item.profile?.id}">${tr('unsave')}</button></div></form>`;
 }
 
 function discoverPage() {
@@ -435,7 +437,7 @@ async function handleClick(event) {
   }
   if (action === 'save-contact') { await withLoading(async () => { await callTownTap('saveContact', { profileId: id }); state.message = tr('cardSaved'); }); return; }
   if (action === 'remove-saved') {
-    await withLoading(async () => { await callTownTap('removeSavedContact', { profileId: id }); state.saved = state.saved.filter((item) => item.profile?.id !== id); state.message = tr('unsave'); }); return;
+    await withLoading(async () => { await callTownTap('removeSavedContact', { profileId: id }); state.saved = state.saved.filter((item) => (item.profileId ?? item.profile?.id) !== id); state.message = tr('unsave'); }); return;
   }
   if (action === 'report-open') { state.reportOpen = true; state.reportTarget = { id, type: button.dataset.type }; render(); return; }
   if (action === 'report-close') { state.reportOpen = false; render(); return; }
@@ -534,10 +536,6 @@ if (firebaseReadyForApp) {
     state.saved = [];
     state.error = '';
     state.codeSent = false;
-    render();
-    if (user) {
-      try { await loadProfileList(); } catch (error) { state.error = error.message; }
-    }
     await loadRouteData();
   });
 } else {

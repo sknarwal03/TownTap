@@ -85,6 +85,14 @@ test('callable cards enforce Private, Public, Link-only, revocation and live sav
   assert.equal(savedView.response.ok, true, JSON.stringify(savedView.result));
   assert.equal(savedView.result.data.contacts[0].unavailable, true);
   assert.deepEqual(savedView.result.data.contacts[0].profile, null);
+  assert.equal(savedView.result.data.contacts[0].profileId, profileId);
+  const updated = await call('updateSavedContact', saverToken, { profileId, note: 'Private context', nickname: 'My contact', tags: ['local'] });
+  assert.equal(updated.response.ok, true);
+  const unavailable = (await call('listSavedContacts', saverToken)).result.data.contacts[0];
+  assert.equal(unavailable.note, 'Private context');
+  assert.equal(unavailable.profile, null);
+  assert.equal((await call('removeSavedContact', saverToken, { profileId })).response.ok, true);
+  assert.deepEqual((await call('listSavedContacts', saverToken)).result.data.contacts, []);
 });
 
 test('callable profile writes reject unauthenticated callers', async () => {
