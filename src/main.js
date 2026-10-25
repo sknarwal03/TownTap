@@ -7,6 +7,10 @@ import { auth, firebaseIsEmulated, firebaseLiveDevBlocked, firebaseReadyForApp, 
 import { confirmPhoneCode, requestPhoneCode, signOutTownTap } from './auth.js';
 import { callTownTap } from './services.js';
 
+const setupNotesUrl = import.meta.env.DEV
+  ? `${import.meta.env.BASE_URL}docs/MASTER-PROJECT-STATUS.md`
+  : 'https://github.com/sknarwal03/TownTap/blob/main/docs/MASTER-PROJECT-STATUS.md';
+
 const navigation = [
   { id: 'home', en: 'Home', hi: 'होम', icon: '⌂', route: 'home' },
   { id: 'saved', en: 'Saved', hi: 'सेव किए', icon: '♡', route: 'saved-contacts' },
@@ -162,7 +166,7 @@ function statusMarkup() {
   if (state.offline) return `<div class="app-alert alert-warn" role="status">${tr('offline')}</div>`;
   if (state.error) return `<div class="app-alert alert-error" role="alert">${escapeHtml(state.error)} <button type="button" class="text-button" data-action="clear-error">×</button></div>`;
   if (state.message) return `<div class="app-alert alert-success" role="status">${escapeHtml(state.message)} <button type="button" class="text-button" data-action="clear-message">×</button></div>`;
-  if (!firebaseReadyForApp) return `<div class="app-alert alert-warn" role="status">${firebaseLiveDevBlocked ? (isHindi() ? 'डेवलपमेंट में लाइव Firebase बंद है। Emulator mode शुरू करें।' : 'Live Firebase is blocked in development. Start emulator mode.') : tr('config')} <a href="/docs/MASTER-PROJECT-STATUS.md">Setup notes</a></div>`;
+  if (!firebaseReadyForApp) return `<div class="app-alert alert-warn" role="status">${firebaseLiveDevBlocked ? (isHindi() ? 'डेवलपमेंट में लाइव Firebase बंद है। Emulator mode शुरू करें।' : 'Live Firebase is blocked in development. Start emulator mode.') : tr('config')} <a href="${setupNotesUrl}">Setup notes</a></div>`;
   if (state.loading) return `<div class="app-alert alert-info" role="status">${tr('loading')}</div>`;
   return '';
 }
@@ -181,7 +185,7 @@ function signedOutPrompt() {
 }
 
 function phoneSignIn() {
-  if (!firebaseReadyForApp) return `<p class="lead">${firebaseLiveDevBlocked ? (isHindi() ? 'डेवलपमेंट में लाइव Firebase बंद है। Emulator mode शुरू करें।' : 'Live Firebase is blocked in development. Start emulator mode.') : tr('config')}</p><a class="text-link" href="/docs/MASTER-PROJECT-STATUS.md">Local setup and current status ↗</a>`;
+  if (!firebaseReadyForApp) return `<p class="lead">${firebaseLiveDevBlocked ? (isHindi() ? 'डेवलपमेंट में लाइव Firebase बंद है। Emulator mode शुरू करें।' : 'Live Firebase is blocked in development. Start emulator mode.') : tr('config')}</p><a class="text-link" href="${setupNotesUrl}">Local setup and current status ↗</a>`;
   if (state.user) return `<div class="notice"><div><strong>${escapeHtml(state.user.phoneNumber ?? state.user.uid)}</strong><p>${firebaseIsEmulated ? tr('emulator') : tr('productionOtp')}</p><button type="button" class="secondary" data-action="sign-out">${tr('signOut')}</button></div></div>`;
   if (state.codeSent) return `<p class="lead">${firebaseIsEmulated ? tr('emulator') : tr('productionOtp')}</p><form id="codeForm" class="form-card"><label>${tr('code')}<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required></label><button class="button button-primary" type="submit">${tr('verify')}</button></form>`;
   return `<p class="lead">${firebaseIsEmulated ? tr('emulator') : tr('productionOtp')}</p><form id="phoneForm" class="form-card"><label>${tr('phone')}<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+911234567890" required></label><div id="recaptcha-container"></div><button class="button button-primary" type="submit">${tr('sendCode')}</button></form>`;
@@ -290,7 +294,7 @@ function verificationForm(profileId) {
 }
 
 function settingsPage() {
-  return `${heading('settings')}<section class="settings-card"><h2>${tr('language')}</h2><div class="language-switch" role="group" aria-label="${tr('language')}"><button type="button" data-locale="en" aria-pressed="${state.locale === 'en'}">English</button><button type="button" data-locale="hi" aria-pressed="${state.locale === 'hi'}">हिन्दी</button></div></section><section class="settings-card"><h2>${tr('privacy')}</h2><p>${tr('privacyText')}</p>${state.user ? `<p>${escapeHtml(state.user.phoneNumber ?? state.user.uid)}</p><button class="secondary" data-action="sign-out">${tr('signOut')}</button>` : `<a class="button button-primary" href="#/welcome">${tr('signIn')}</a>`}<p><a class="text-link" href="#/admin">${tr('openAdmin')}</a></p></section><a class="text-link" href="/prototypes/index.html">${tr('prototype')} ↗</a>`;
+  return `${heading('settings')}<section class="settings-card"><h2>${tr('language')}</h2><div class="language-switch" role="group" aria-label="${tr('language')}"><button type="button" data-locale="en" aria-pressed="${state.locale === 'en'}">English</button><button type="button" data-locale="hi" aria-pressed="${state.locale === 'hi'}">हिन्दी</button></div></section><section class="settings-card"><h2>${tr('privacy')}</h2><p>${tr('privacyText')}</p>${state.user ? `<p>${escapeHtml(state.user.phoneNumber ?? state.user.uid)}</p><button class="secondary" data-action="sign-out">${tr('signOut')}</button>` : `<a class="button button-primary" href="#/welcome">${tr('signIn')}</a>`}<p><a class="text-link" href="#/admin">${tr('openAdmin')}</a></p></section>${import.meta.env.DEV ? `<a class="text-link" href="${import.meta.env.BASE_URL}prototypes/index.html">${tr('prototype')} ↗</a>` : ''}`;
 }
 
 function adminPage() {
@@ -543,5 +547,5 @@ if (firebaseReadyForApp) {
 }
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}service-worker.js`).catch(() => {}));
 }

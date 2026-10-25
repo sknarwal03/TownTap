@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-25
 **Current cloud workspace:** `/workspace/TownTap`
-**Release status:** Alpha implementation is active; production release is not ready. No live project, production OTP, deployment, billing, or production resource was used.
+**Release status:** Alpha implementation is active; production release is not ready. No live Firebase project, production OTP, Firebase deployment, billing, or production backend resource was used. GitHub Pages frontend publishing is configured separately below.
 
 **Current checkpoint:** Core Alpha browser regression and business verification/moderation emulator integration coverage are implemented, with saved-reference and verification lifecycle fixes. Production release gates remain open.
 
@@ -19,6 +19,7 @@ TownTap is a bilingual digital card, private smart phonebook, and local business
 - Firestore client reads/writes deny by default. Storage rules restrict verification evidence to the owner’s pending request and moderator review; server approval checks size and file signatures.
 - PWA manifest/icon and network-only, no-store service worker; basic loading, error, offline, and reduced-motion/accessibility support.
 - Pending verification request references now survive profile edits; concurrent submissions reuse one request, and approval rechecks the current active business inside its transaction.
+- GitHub Pages frontend workflow builds and tests `dist/` under `/TownTap/`; PWA manifest, icons and service worker respect the repository path. Repository Pages Source must be set to GitHub Actions. Live site deployment is not established by local tests.
 - Implementation/setup guide: `docs/12-FIREBASE-IMPLEMENTATION-AND-LOCAL-TESTING.md`.
 
 ## Implementation assumptions and known limits
@@ -48,6 +49,7 @@ The cloud checkout has committed baseline `1ebd169ce68e8a04bdd297559368352ac9668
 | Chrome UI smoke | PASS, limited | Welcome, Discover and Settings render; Hindi switch updates labels/title. Desktop, signed-out only. |
 | `npm audit --omit=dev --audit-level=high` | Historical FAIL, 4 reported high; not rerun in this change | Reported transitive Firebase/Firestore dependency advisory. Compatible audit fix unavailable; no forced breaking dependency change. |
 | Core Alpha browser E2E | PASS, 4/4 | Real local emulator OTP and core card/share/saved/privacy flow plus guest-route/state checks at desktop and mobile Chromium viewports; generated QR decoded independently. |
+| `npm run test:pages` | PASS, 2/2 | Built frontend renders at `/TownTap/` in desktop/mobile Chromium, including PWA asset paths and service-worker scope; no live backend configuration. |
 | Live OTP / physical devices / screen readers | NOT RUN | Production and device-specific checks remain open. |
 
 The emulator results verify only the local rules and application checks run above; they do not prove production setup or security.

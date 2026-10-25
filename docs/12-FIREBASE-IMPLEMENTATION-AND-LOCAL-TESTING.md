@@ -98,3 +98,13 @@ Covered behavior:
 - Report dismissal leaves the listing active. Unpublish suspends the profile, increments the link version, removes discovery, denies guest/other-user card and old-link reads, and hides the live saved profile while retaining saver-owned context. Owner edits cannot republish a suspended listing. Each resolved report leaves exactly one attributed audit record, and repeated resolution is denied.
 
 These tests verify the existing draft workflow, not final business-evidence criteria, appeals, badge renewal/revocation policy, retention or production IAM/App Check. Those decisions remain in document 10. No deployment or live resource change was made.
+
+## GitHub Pages frontend build
+
+TownTap uses Vite modules and npm dependencies. GitHub Pages must publish the compiled `dist/` artifact; serving the repository's source `index.html` directly cannot load the app. Repository Pages URLs also require the `/TownTap/` asset base rather than `/`.
+
+The `.github/workflows/pages.yml` workflow builds on pushes to `main` and on manual dispatch using Node 24, locked dependencies, unit tests and a production Chromium smoke test. It uploads only `dist/` and deploys it through the official Pages actions. In the repository settings, choose **Pages → Build and deployment → Source → GitHub Actions**. If Pages was configured to publish `main` directly, that setting must be changed; adding a workflow does not change the repository's Pages source setting. After choosing Actions, run **Deploy TownTap to GitHub Pages** from the Actions tab if the latest run did not deploy.
+
+To reproduce locally, run `npm run test:pages`. This builds with `--base=/TownTap/`, starts Vite preview at that path and runs desktop/mobile production smoke checks. The checks confirm actual app rendering, compiled JS/CSS paths, manifest start URL/scope/icon resolution, service-worker URL/scope and Hindi navigation without browser crashes or missing assets. Normal `npm run build` retains the root base for root-hosted deployments.
+
+This Pages workflow deliberately builds without production Firebase configuration. It publishes the frontend shell with the existing setup notice; it does not provide functional live phone login or backend data, and must never use local emulator settings in a public build. Production Firebase web configuration, authorized domains, deployed Functions/rules and real OTP remain a separate setup/release task. No live Firebase deployment is part of this Pages fix.

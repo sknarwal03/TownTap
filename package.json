@@ -13,7 +13,8 @@
     "test:functions": "node --test --test-concurrency=1 functions/test/*.test.js",
     "test:functions:emulator": "firebase emulators:exec --project demo-towntap-local --only auth,firestore,functions,storage \"node --test --test-concurrency=1 emulator-tests/*.integration.test.js\"",
     "firebase:emulators": "firebase emulators:start --project demo-towntap-local",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:pages": "npm run build -- --base=/TownTap/ && playwright test --config playwright.pages.config.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
