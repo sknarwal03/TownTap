@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All TownTap data is accessed through authenticated callable functions.
+    // Admin SDK functions bypass these rules and must perform their own checks.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

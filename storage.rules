@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function moderator() {
+      return signedIn()
+        && request.auth.token.keys().hasAny(['moderator'])
+        && request.auth.token.moderator == true;
+    }
+    function ownsRequest(uid, requestId) {
+      let requestDoc = firestore.get(/databases/(default)/documents/verificationRequests/$(requestId));
+      return requestDoc.data.requesterUid == uid;
+    }
+    function ownsPendingRequest(uid, requestId) {
+      let requestDoc = firestore.get(/databases/(default)/documents/verificationRequests/$(requestId));
+      return requestDoc.data.requesterUid == uid && requestDoc.data.status == 'pending';
+    }
+
+    match /verificationEvidence/{uid}/{requestId}/evidence {
+      allow read: if signedIn() && ((request.auth.uid == uid && ownsRequest(uid, requestId)) || moderator());
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && ownsPendingRequest(uid, requestId)
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(png|jpeg|webp)|application/pdf');
+      allow delete: if signedIn() && ((request.auth.uid == uid && ownsRequest(uid, requestId)) || moderator());
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

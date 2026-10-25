@@ -1,0 +1,26 @@
+{
+  "name": "towntap",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:emulator": "vite --mode emulator",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test --test-concurrency=1 tests/app-shell.test.js functions/test/domain.test.js",
+    "test:rules": "firebase emulators:exec --project demo-towntap-local --only auth,firestore,storage \"node --test --test-concurrency=1 emulator-tests/firestore.rules.test.js emulator-tests/storage.rules.test.js\"",
+    "test:functions": "node --test --test-concurrency=1 functions/test/*.test.js",
+    "test:functions:emulator": "firebase emulators:exec --project demo-towntap-local --only auth,firestore,functions,storage \"node --test --test-concurrency=1 emulator-tests/functions.integration.test.js\"",
+    "firebase:emulators": "firebase emulators:start --project demo-towntap-local"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase-tools": "^15.34.1",
+    "vite": "^6.4.1"
+  },
+  "dependencies": {
+    "firebase": "^13.1.0",
+    "qrcode": "^1.5.4"
+  }
+}
