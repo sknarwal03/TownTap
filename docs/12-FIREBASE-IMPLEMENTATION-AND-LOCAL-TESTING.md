@@ -6,7 +6,7 @@
 
 1. Install the root and Functions dependencies with `npm ci` and `npm --prefix functions ci`.
 2. Create ignored `.env.emulator.local` with the demo-only values below. `.env.emulator` is not checked in. Preserve any existing local configuration.
-3. Run `npm run firebase:emulators` in one terminal and `npm run dev:emulator` in another. The app connects only to Auth, Firestore, Functions, and Storage emulators in this mode.
+3. Run `npm run firebase:emulators` in one terminal and `npm run dev:emulator` in another. The app connects only to local emulators in this mode: Auth at startup, then Functions and Storage on demand. Firestore is accessed by callable Functions through the emulator; browser data access remains server-mediated.
 4. Phone sign-in uses Firebase Auth Emulator. No SMS is sent; inspect the emulator terminal for its test code. The Auth Emulator does not model production anti-abuse limits.
 5. Run `npm test`, `npm run test:functions`, `npm run test:rules`, and `npm run test:functions:emulator` to run the automated checks. The Functions integration suites exercise core card/privacy/saved flows plus moderator authorization, business evidence/review, report dismissal/unpublish and audit records. Emulator checks do not prove deployed IAM, rules, billing, quotas, or live OTP configuration.
 
@@ -22,6 +22,7 @@ All application data is accessed through callable Cloud Functions. Firestore cli
 | `businessDirectory/{profileId}` | Small public-only projection for active, opted-in public businesses; maintained in the same transaction as profile writes/reviews. |
 | `shareLinks/{sha256(token)}` | Token digest, profile ID, current version and creator. Raw 256-bit token is returned once and never stored. One active link version per profile. |
 | `users/{uid}/savedContacts/{profileId}` | Saver-owned saved reference, private notes, nickname, tags, and timestamp. Reads join against the current profile and omit unavailable/restricted cards. |
+| `userProfileCounters/{uid}` | Server-maintained count used to enforce the approved five-card/listing-per-account limit transactionally. Client access remains denied. |
 | `reports/{reportId}` | Reporter, target, reason, status and moderation outcome. Moderator access is enforced by custom claim in Functions. |
 | `verificationRequests/{requestId}` | Business evidence request and review state. Evidence bytes live in private Storage. |
 | `moderationAudit/{eventId}` | Append-only function-created actions for verification review and report resolution. Direct client access is denied. |

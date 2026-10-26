@@ -18,7 +18,7 @@ Status: proposed field-level behavior for review. This document separates approv
 - Unlisted profiles are excluded from public search and directory browsing. A valid link permits only the information allowed for that link (PDR-03).
 - Private profiles are unavailable through public search, browsing, and public links; authenticated owners retain access.
 - Individual visibility controls are required for each sensitive profile field (REL-04).
-- Owner-approved field audience choices are **Private**, **Link-only**, and **Public**; sensitive fields default to **Private**. The full field-by-field matrix and mode/field transition effects remain open.
+- Owner-approved field audience choices are **Private**, **Link-only**, and **Public**; every card field defaults to **Private** (owner confirmation PRIVACY-01, 2026-10-26). Sensitive fields therefore remain Private by default as well. The full field-by-field matrix and mode/field transition effects remain open.
 - Unlisted links persist until the owner revokes or regenerates them; old links immediately cease authorizing access (UX-04, REL-05).
 - Signup is allowed regardless of geography. Business discovery prioritizes Gohana/Sonipat, but is not geographically exclusive (UX-08, REL-07).
 

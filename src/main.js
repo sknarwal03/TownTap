@@ -1,11 +1,10 @@
 import './style.css';
 import './app.css';
-import QRCode from 'qrcode';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getBytes, ref, uploadBytes } from 'firebase/storage';
-import { auth, firebaseIsEmulated, firebaseLiveDevBlocked, firebaseReadyForApp, storage } from './firebase.js';
+import { auth, firebaseIsEmulated, firebaseLiveDevBlocked, firebaseReadyForApp } from './firebase.js';
 import { confirmPhoneCode, requestPhoneCode, signOutTownTap } from './auth.js';
 import { callTownTap } from './services.js';
+import { downloadVerificationEvidence, uploadVerificationEvidence } from './evidence.js';
 
 const navigation = [
   { id: 'home', en: 'Home', hi: 'होम', icon: '⌂', route: 'home' },
@@ -31,10 +30,11 @@ const screens = [
 ];
 
 const fieldList = [
-  ['displayName', 'Display name', 'नाम'], ['headline', 'Headline', 'परिचय'],
+  ['displayName', 'Display name', 'नाम'], ['photoUrl', 'Photo or logo URL', 'फ़ोटो या लोगो URL'],
+  ['headline', 'Headline', 'परिचय'],
   ['category', 'Category', 'श्रेणी'], ['city', 'City', 'शहर'],
   ['phone', 'Phone', 'फ़ोन'], ['whatsapp', 'WhatsApp', 'व्हाट्सऐप'],
-  ['email', 'Email', 'ईमेल'], ['website', 'Website', 'वेबसाइट'],
+  ['email', 'Email', 'ईमेल'], ['website', 'Website', 'वेबसाइट'], ['socialLinks', 'Social links', 'सोशल लिंक'],
   ['bio', 'Short bio', 'छोटा परिचय'], ['address', 'Address', 'पता'],
   ['mapLink', 'Map link', 'मैप लिंक'], ['services', 'Services', 'सेवाएं'],
   ['serviceArea', 'Service area', 'सेवा क्षेत्र'], ['hours', 'Working hours', 'काम का समय'],
@@ -51,6 +51,7 @@ const copy = {
     signIn: 'Sign in with phone', signOut: 'Sign out', homeTitle: 'Your cards and contacts, in one place',
     quickCards: 'My Cards', quickSaved: 'Saved contacts', quickDiscover: 'Discover businesses',
     newCard: 'Create a card', newBusiness: 'Add a business', noCards: 'No cards yet. Create a private card to get started.',
+    cardLimit: 'You have reached the 5-card limit for this account.', businessName: 'Business name',
     noSaved: 'No saved contacts yet.', noBusinesses: 'No matching public businesses found.',
     edit: 'Edit', view: 'View card', save: 'Save card', unsave: 'Remove saved card', share: 'Create share link + QR', revoke: 'Revoke all share links',
     copy: 'Copy link', saved: 'Saved', note: 'Private note', nickname: 'Nickname', tags: 'Tags (comma separated)', saveNote: 'Save private details',
@@ -84,6 +85,7 @@ const copy = {
     signIn: 'फ़ोन से साइन इन', signOut: 'साइन आउट', homeTitle: 'आपके कार्ड और संपर्क, एक जगह',
     quickCards: 'मेरे कार्ड', quickSaved: 'सेव किए संपर्क', quickDiscover: 'व्यवसाय खोजें',
     newCard: 'कार्ड बनाएं', newBusiness: 'व्यवसाय जोड़ें', noCards: 'अभी कोई कार्ड नहीं है। शुरू करने के लिए निजी कार्ड बनाएं।',
+    cardLimit: 'इस खाते के लिए 5 कार्ड की सीमा पूरी हो गई है।', businessName: 'व्यवसाय का नाम',
     noSaved: 'अभी कोई संपर्क सेव नहीं है।', noBusinesses: 'इस खोज में कोई सार्वजनिक व्यवसाय नहीं मिला।',
     edit: 'बदलें', view: 'कार्ड देखें', save: 'कार्ड सेव करें', unsave: 'सेव किए कार्ड हटाएं', share: 'शेयर लिंक + QR बनाएं', revoke: 'सभी शेयर लिंक बंद करें',
     copy: 'लिंक कॉपी करें', saved: 'सेव किया', note: 'निजी नोट', nickname: 'अपना नाम', tags: 'टैग (कॉमा से अलग करें)', saveNote: 'निजी जानकारी सेव करें',
@@ -212,15 +214,20 @@ function profileList() {
   const type = params.get('type');
   const items = state.profiles.filter((profile) => !type || profile.type === type);
   const cards = items.map((profile) => `<div class="data-card">${profileCard(profile, true)}<div class="card-actions"><button class="small-button" data-action="edit-profile" data-id="${profile.id}">${tr('edit')}</button><button class="small-button" data-action="view-profile" data-id="${profile.id}">${tr('view')}</button>${profile.visibility !== 'private' ? `<button class="small-button" data-action="share-profile" data-id="${profile.id}">${tr('share')}</button>` : ''}${profile.type === 'business' ? `<button class="small-button" data-action="verification-open" data-id="${profile.id}">${tr('verification')}</button>` : ''}</div></div>`).join('');
-  return `${heading('my-cards')}<div class="actions"><a class="button button-primary" href="#/card-editor">${tr('newCard')}</a><a class="button button-secondary" href="#/business-studio">${tr('newBusiness')}</a></div>${cards || `<div class="empty-state">${tr('noCards')}</div>`}`;
+  const createActions = state.profiles.length >= 5
+    ? `<div class="notice">${tr('cardLimit')}</div>`
+    : `<div class="actions"><a class="button button-primary" href="#/card-editor">${tr('newCard')}</a><a class="button button-secondary" href="#/business-studio">${tr('newBusiness')}</a></div>`;
+  return `${heading('my-cards')}${createActions}${cards || `<div class="empty-state">${tr('noCards')}</div>`}`;
 }
 
-function fieldControl(field, value = '', audience = 'private') {
+function fieldControl(field, value = '', audience = 'private', profileType = 'personal') {
   const id = `field-${field[0]}`;
   const safeValue = escapeHtml(value);
-  const isLong = ['bio', 'services', 'serviceArea', 'hours', 'address'].includes(field[0]);
-  const type = field[0] === 'email' ? 'email' : field[0] === 'website' || field[0] === 'mapLink' ? 'url' : field[0] === 'phone' || field[0] === 'whatsapp' ? 'tel' : 'text';
-  return `<div class="field-row"><label for="${id}">${labelOf(field)}${isLong ? `<textarea id="${id}" name="${field[0]}" maxlength="1200">${safeValue}</textarea>` : `<input id="${id}" name="${field[0]}" type="${type}" maxlength="1200" value="${safeValue}" ${field[0] === 'displayName' ? 'required' : ''}>`}</label><label class="audience-label">${tr('audience')}<select name="audience-${field[0]}"><option value="private" ${audience === 'private' ? 'selected' : ''}>${tr('private')}</option><option value="link" ${audience === 'link' ? 'selected' : ''}>${tr('linkOnly')}</option><option value="public" ${audience === 'public' ? 'selected' : ''}>${tr('public')}</option></select></label></div>`;
+  const isLong = ['bio', 'services', 'serviceArea', 'hours', 'address', 'socialLinks'].includes(field[0]);
+  const type = field[0] === 'email' ? 'email' : ['website', 'mapLink', 'photoUrl'].includes(field[0]) ? 'url' : ['phone', 'whatsapp'].includes(field[0]) ? 'tel' : 'text';
+  const label = field[0] === 'displayName' && profileType === 'business' ? tr('businessName') : labelOf(field);
+  const required = field[0] === 'displayName' || (profileType === 'business' && field[0] === 'category');
+  return `<div class="field-row"><label for="${id}">${label}${isLong ? `<textarea id="${id}" name="${field[0]}" maxlength="1200">${safeValue}</textarea>` : `<input id="${id}" name="${field[0]}" type="${type}" maxlength="1200" value="${safeValue}" ${required ? 'required' : ''}>`}</label><label class="audience-label">${tr('audience')}<select name="audience-${field[0]}"><option value="private" ${audience === 'private' ? 'selected' : ''}>${tr('private')}</option><option value="link" ${audience === 'link' ? 'selected' : ''}>${tr('linkOnly')}</option><option value="public" ${audience === 'public' ? 'selected' : ''}>${tr('public')}</option></select></label></div>`;
 }
 
 function editorPage() {
@@ -232,7 +239,7 @@ function editorPage() {
   const type = existing?.type ?? (params.get('type') === 'business' ? 'business' : 'personal');
   const fields = existing?.fields ?? {};
   const audiences = existing?.fieldAudiences ?? {};
-  return `${heading('card-editor', tr('privateDefault'))}<form id="profileForm" class="form-card" data-profile-id="${existing?.id ?? ''}"><div class="form-grid"><label>${tr('profileType')}<select name="type"><option value="personal" ${type === 'personal' ? 'selected' : ''}>${tr('personal')}</option><option value="professional" ${type === 'professional' ? 'selected' : ''}>${tr('professional')}</option><option value="business" ${type === 'business' ? 'selected' : ''}>${tr('business')}</option></select></label><label>${tr('visibility')}<select name="visibility"><option value="private" ${existing?.visibility === 'private' || !existing ? 'selected' : ''}>${tr('private')}</option><option value="unlisted" ${existing?.visibility === 'unlisted' ? 'selected' : ''}>${tr('unlisted')}</option><option value="public" ${existing?.visibility === 'public' ? 'selected' : ''}>${tr('public')}</option></select></label></div>${fieldList.map((field) => fieldControl(field, fields[field[0]] ?? '', audiences[field[0]] ?? 'private')).join('')}<label class="check-row"><input name="discoverable" type="checkbox" ${existing?.discoverable ? 'checked' : ''} ${type !== 'business' ? 'disabled' : ''}>${tr('discoverable')}</label><p class="field-summary">${tr('privateDefault')}</p><div class="actions"><button class="button button-primary" type="submit">${tr('saveProfile')}</button><a class="button button-secondary" href="#/my-cards">${tr('cancel')}</a></div></form>`;
+  return `${heading('card-editor', tr('privateDefault'))}<form id="profileForm" class="form-card" data-profile-id="${existing?.id ?? ''}"><div class="form-grid"><label>${tr('profileType')}<select name="type"><option value="personal" ${type === 'personal' ? 'selected' : ''}>${tr('personal')}</option><option value="professional" ${type === 'professional' ? 'selected' : ''}>${tr('professional')}</option><option value="business" ${type === 'business' ? 'selected' : ''}>${tr('business')}</option></select></label><label>${tr('visibility')}<select name="visibility"><option value="private" ${existing?.visibility === 'private' || !existing ? 'selected' : ''}>${tr('private')}</option><option value="unlisted" ${existing?.visibility === 'unlisted' ? 'selected' : ''}>${tr('unlisted')}</option><option value="public" ${existing?.visibility === 'public' ? 'selected' : ''}>${tr('public')}</option></select></label></div>${fieldList.map((field) => fieldControl(field, fields[field[0]] ?? '', audiences[field[0]] ?? 'private', type)).join('')}<label class="check-row"><input name="discoverable" type="checkbox" ${existing?.discoverable ? 'checked' : ''} ${type !== 'business' ? 'disabled' : ''}>${tr('discoverable')}</label><p class="field-summary">${tr('privateDefault')}</p><div class="actions"><button class="button button-primary" type="submit">${tr('saveProfile')}</button><a class="button button-secondary" href="#/my-cards">${tr('cancel')}</a></div></form>`;
 }
 
 function cardViewPage() {
@@ -407,6 +414,7 @@ function shareUrl(profileId, token) {
 async function createShare(profileId) {
   const response = await callTownTap('createShareLink', { profileId });
   state.shareUrl = shareUrl(profileId, response.token);
+  const { default: QRCode } = await import('qrcode');
   state.qr = await QRCode.toDataURL(state.shareUrl, { width: 260, margin: 2, errorCorrectionLevel: 'M' });
   state.message = tr('linkCreated');
   navigate('public-card', { profileId, shareToken: response.token });
@@ -451,7 +459,7 @@ async function handleClick(event) {
   }
   if (action === 'view-evidence') {
     await withLoading(async () => {
-      const blob = new Blob([await getBytes(ref(storage, button.dataset.path))]);
+      const blob = await downloadVerificationEvidence(button.dataset.path);
       const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.target = '_blank'; link.rel = 'noopener'; link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
     }); return;
@@ -513,7 +521,7 @@ async function handleSubmit(event) {
     if (!(file instanceof File) || !file.size || file.size > 10 * 1024 * 1024) { state.error = tr('evidence'); render(); return; }
     await withLoading(async () => {
       const result = await callTownTap('requestBusinessVerification', { profileId: form.dataset.profileId });
-      await uploadBytes(ref(storage, result.storagePath), file, { contentType: file.type, customMetadata: { ownerUid: state.user.uid } });
+      await uploadVerificationEvidence(result.storagePath, file, state.user.uid);
       state.message = tr('verificationSent');
       await loadProfileList();
     });

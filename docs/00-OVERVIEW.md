@@ -12,7 +12,7 @@ TownTap is planned as a web app for digital cards, a private smart phonebook, an
 - The PRD defines five main areas: **Home, Saved, Discover, My Cards, Profile**, and twelve screens. Keep these labels and destinations as the source unless an approved decision changes them.
 - New profiles start **Private**. The owner must choose to share them.
 - Visibility modes are **Private**, **Unlisted** (valid link only, not discoverable), and **Public** (eligible for discovery, subject to field settings).
-- Sensitive fields are private by default and have individual visibility controls. Revoking or regenerating an Unlisted link must immediately stop new access through its old link.
+- Every card field defaults to Private and has individual visibility controls. Revoking or regenerating an Unlisted link must immediately stop new access through its old link.
 - Hindi and English are supported. The first language follows the device setting; the user can switch language and the choice is saved.
 - Mobile OTP is planned for signup, login, and phone verification. OTP is not business verification. A business badge needs evidence and admin review.
 - `prototypes/index.html` is the approved UX starting point, not final design, production code, authentication, or a security model.
@@ -50,12 +50,13 @@ The release strategy approved Phases 0–4. Phases 1 and 2 are the first working
 | 10 | [Open decisions](10-OPEN-DECISIONS.md) | Unresolved product/UX choices and their dependencies. |
 | 11 | [Architecture and data/API planning draft](11-TECHNICAL-ARCHITECTURE-AND-DATA-API-PLAN.md) | Logical architecture proposal updated with Firebase as the current implementation target; detailed schema and security rules remain open. |
 | 12 | [Firebase implementation and local testing](12-FIREBASE-IMPLEMENTATION-AND-LOCAL-TESTING.md) | Emulator architecture, schema, callable functions, privacy behavior, assumptions, test commands, and release boundaries. |
+| 13 | [Production deployment readiness](13-PRODUCTION-DEPLOYMENT-READINESS.md) | Current production blockers, staged readiness checklist, and release evidence required before deployment. |
 | — | [Master project status](MASTER-PROJECT-STATUS.md) | Current implementation status, architecture direction, checks, blockers, and next work. |
 | — | `AGENTS.md` | Repository working instructions, not product requirements. |
 
 ## Recommended reading order
 
-Start here, then read 01 PRD, 02 approved decisions, 03 UX/screens, 04 privacy, 05 authentication, 06 roadmap, and 07 Alpha criteria. Use 08 for prototype history, 10 for owner decisions still needed, 11 for architecture planning, 12 for emulator implementation/testing, and `MASTER-PROJECT-STATUS.md` for current evidence. Do not treat emulator behavior or proposals as production approval.
+Start here, then read 01 PRD, 02 approved decisions, 03 UX/screens, 04 privacy, 05 authentication, 06 roadmap, and 07 Alpha criteria. Use 08 for prototype history, 10 for owner decisions still needed, 11 for architecture planning, 12 for emulator implementation/testing, 13 for production readiness, and `MASTER-PROJECT-STATUS.md` for current evidence. Do not treat emulator behavior or proposals as production approval.
 
 
 
