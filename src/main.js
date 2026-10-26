@@ -1,10 +1,9 @@
 import './style.css';
 import './app.css';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth, firebaseIsEmulated, firebaseLiveDevBlocked, firebaseReadyForApp } from './firebase.js';
-import { confirmPhoneCode, requestPhoneCode, signOutTownTap } from './auth.js';
-import { callTownTap } from './services.js';
-import { downloadVerificationEvidence, uploadVerificationEvidence } from './evidence.js';
+
+let firebaseIsEmulated = false;
+let firebaseLiveDevBlocked = false;
+let firebaseReadyForApp = false;
 
 const setupNotesUrl = import.meta.env.DEV
   ? `${import.meta.env.BASE_URL}docs/MASTER-PROJECT-STATUS.md`
@@ -351,9 +350,15 @@ async function withLoading(operation) {
   } finally { state.loading = false; render(); }
 }
 
+async function callBackend(name, data = {}) {
+  const { callTownTap } = await import('./services.js');
+  const { callTownTap } = await import('./services.js');
+  return callTownTap(name, data);
+}
+
 async function loadProfileList() {
   if (!firebaseReadyForApp || !state.user) return;
-  const response = await callTownTap('listMyProfiles');
+  const response = await callBackend('listMyProfiles');
   state.profiles = response.profiles ?? [];
 }
 
@@ -369,19 +374,19 @@ async function loadRouteData() {
   }
   if (state.user && ['saved-contacts', 'saved-detail'].includes(route)) {
     state.loading = true; render();
-    try { state.saved = (await callTownTap('listSavedContacts')).contacts ?? []; } catch (error) { state.error = error.message; }
+    try { state.saved = (await callBackend('listSavedContacts')).contacts ?? []; } catch (error) { state.error = error.message; }
     state.loading = false; render();
   }
   if (route === 'discover') {
     state.loading = true; render();
-    try { state.businesses = (await callTownTap('searchBusinesses', { term: params.get('term') ?? '', city: params.get('city') ?? '', category: params.get('category') ?? '' })).businesses ?? []; }
+    try { state.businesses = (await callBackend('searchBusinesses', { term: params.get('term') ?? '', city: params.get('city') ?? '', category: params.get('category') ?? '' })).businesses ?? []; }
     catch (error) { state.error = error.message; }
     state.loading = false; render();
   }
   if (['public-card', 'business-detail'].includes(route) && params.get('profileId')) {
     state.currentCard = null; state.currentCardOwner = false; state.loading = true; render();
     try {
-      const response = await callTownTap('resolveCard', { profileId: params.get('profileId'), shareToken: params.get('shareToken') ?? '' });
+      const response = await callBackend('resolveCard', { profileId: params.get('profileId'), shareToken: params.get('shareToken') ?? '' });
       state.currentCard = response.profile;
       state.currentCardOwner = response.owner === true;
     } catch (error) { state.error = error.message; }
@@ -390,7 +395,7 @@ async function loadRouteData() {
   if (route === 'admin' && state.user) {
     state.loading = true; render();
     try {
-      const [reports, verifications] = await Promise.all([callTownTap('listModerationQueue'), callTownTap('listVerificationQueue')]);
+      const [reports, verifications] = await Promise.all([callBackend('listModerationQueue'), callBackend('listVerificationQueue')]);
       state.reports = reports.reports ?? [];
       state.verifications = verifications.requests ?? [];
     } catch (error) { state.error = error.message; }
@@ -416,7 +421,7 @@ function shareUrl(profileId, token) {
 }
 
 async function createShare(profileId) {
-  const response = await callTownTap('createShareLink', { profileId });
+  const response = await callBackend('createShareLink', { profileId });
   state.shareUrl = shareUrl(profileId, response.token);
   const { default: QRCode } = await import('qrcode');
   state.qr = await QRCode.toDataURL(state.shareUrl, { width: 260, margin: 2, errorCorrectionLevel: 'M' });
@@ -432,7 +437,7 @@ async function handleClick(event) {
   const id = button.dataset.id;
   if (action === 'clear-error') { state.error = ''; render(); return; }
   if (action === 'clear-message') { state.message = ''; render(); return; }
-  if (action === 'sign-out') { await withLoading(signOutTownTap); return; }
+  if (action === 'sign-out') { await withLoading(async () => (await import('./auth.js')).signOutTownTap()); return; }
   if (action === 'edit-profile') { navigate('card-editor', { profileId: id }); return; }
   if (action === 'view-profile') {
     const profile = state.profiles.find((item) => item.id === id) ?? state.businesses.find((item) => item.profileId === id);
@@ -441,29 +446,29 @@ async function handleClick(event) {
   if (action === 'saved-detail') { navigate('saved-detail', { profileId: id }); return; }
   if (action === 'share-profile') { await withLoading(() => createShare(id)); return; }
   if (action === 'revoke-links') {
-    await withLoading(async () => { await callTownTap('revokeShareLinks', { profileId: id }); state.qr = null; state.shareUrl = ''; state.message = tr('linkRevoked'); }); return;
+    await withLoading(async () => { await callBackend('revokeShareLinks', { profileId: id }); state.qr = null; state.shareUrl = ''; state.message = tr('linkRevoked'); }); return;
   }
   if (action === 'copy-link') {
     try { await navigator.clipboard.writeText(state.shareUrl); state.message = tr('copied'); } catch { state.error = 'Clipboard unavailable.'; }
     render(); return;
   }
-  if (action === 'save-contact') { await withLoading(async () => { await callTownTap('saveContact', { profileId: id }); state.message = tr('cardSaved'); }); return; }
+  if (action === 'save-contact') { await withLoading(async () => { await callBackend('saveContact', { profileId: id }); state.message = tr('cardSaved'); }); return; }
   if (action === 'remove-saved') {
-    await withLoading(async () => { await callTownTap('removeSavedContact', { profileId: id }); state.saved = state.saved.filter((item) => (item.profileId ?? item.profile?.id) !== id); state.message = tr('unsave'); }); return;
+    await withLoading(async () => { await callBackend('removeSavedContact', { profileId: id }); state.saved = state.saved.filter((item) => (item.profileId ?? item.profile?.id) !== id); state.message = tr('unsave'); }); return;
   }
   if (action === 'report-open') { state.reportOpen = true; state.reportTarget = { id, type: button.dataset.type }; render(); return; }
   if (action === 'report-close') { state.reportOpen = false; render(); return; }
   if (action === 'verification-open') { state.verificationTarget = id; render(); document.getElementById('verificationForm')?.scrollIntoView({ behavior: 'smooth' }); return; }
   if (action === 'resolve-report') {
-    await withLoading(async () => { await callTownTap('resolveReport', { reportId: id, action: button.dataset.resolution }); state.reports = state.reports.filter((report) => report.id !== id); }); return;
+    await withLoading(async () => { await callBackend('resolveReport', { reportId: id, action: button.dataset.resolution }); state.reports = state.reports.filter((report) => report.id !== id); }); return;
   }
   if (action === 'review-verification') {
     const note = window.prompt(tr('reviewNote'), '') ?? '';
-    await withLoading(async () => { await callTownTap('reviewBusinessVerification', { requestId: id, decision: button.dataset.decision, reviewNote: note }); state.verifications = state.verifications.filter((item) => item.id !== id); }); return;
+    await withLoading(async () => { await callBackend('reviewBusinessVerification', { requestId: id, decision: button.dataset.decision, reviewNote: note }); state.verifications = state.verifications.filter((item) => item.id !== id); }); return;
   }
   if (action === 'view-evidence') {
     await withLoading(async () => {
-      const blob = await downloadVerificationEvidence(button.dataset.path);
+      const blob = await (await import('./evidence.js')).downloadVerificationEvidence(button.dataset.path);
       const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.target = '_blank'; link.rel = 'noopener'; link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
     }); return;
@@ -476,12 +481,12 @@ async function handleSubmit(event) {
   if (form.id === 'phoneForm') {
     const phone = new FormData(form).get('phone').trim();
     if (!/^\+[1-9]\d{7,14}$/.test(phone)) { state.error = tr('phoneInvalid'); render(); return; }
-    await withLoading(async () => { const result = await requestPhoneCode(phone); state.confirmation = result.confirmation; state.codeSent = true; state.message = result.emulated ? tr('emulator') : tr('productionOtp'); });
+    await withLoading(async () => { const result = await (await import('./auth.js')).requestPhoneCode(phone); state.confirmation = result.confirmation; state.codeSent = true; state.message = result.emulated ? tr('emulator') : tr('productionOtp'); });
     return;
   }
   if (form.id === 'codeForm') {
     const code = new FormData(form).get('code').trim();
-    await withLoading(async () => { await confirmPhoneCode(state.confirmation, code); state.codeSent = false; state.confirmation = null; state.message = tr('signIn'); });
+    await withLoading(async () => { await (await import('./auth.js')).confirmPhoneCode(state.confirmation, code); state.codeSent = false; state.confirmation = null; state.message = tr('signIn'); });
     return;
   }
   if (form.id === 'profileForm') {
@@ -489,7 +494,7 @@ async function handleSubmit(event) {
     if (profile.visibility !== 'private' && !window.confirm(tr('confirmPublic'))) return;
     const existingId = form.dataset.profileId;
     await withLoading(async () => {
-      const result = await callTownTap('upsertProfile', { profileId: existingId || undefined, profile });
+      const result = await callBackend('upsertProfile', { profileId: existingId || undefined, profile });
       state.message = tr('profileSaved');
       await loadProfileList();
       navigate('my-cards');
@@ -501,8 +506,8 @@ async function handleSubmit(event) {
     const data = new FormData(form);
     const tags = String(data.get('tags')).split(',').map((item) => item.trim()).filter(Boolean);
     await withLoading(async () => {
-      await callTownTap('updateSavedContact', { profileId: form.dataset.profileId, note: data.get('note'), nickname: data.get('nickname'), tags });
-      state.saved = (await callTownTap('listSavedContacts')).contacts ?? [];
+      await callBackend('updateSavedContact', { profileId: form.dataset.profileId, note: data.get('note'), nickname: data.get('nickname'), tags });
+      state.saved = (await callBackend('listSavedContacts')).contacts ?? [];
       state.message = tr('saveNote');
     });
     return;
@@ -515,7 +520,7 @@ async function handleSubmit(event) {
   if (form.id === 'reportForm') {
     const reason = new FormData(form).get('reason').trim();
     await withLoading(async () => {
-      await callTownTap('submitReport', { targetId: form.dataset.targetId, targetType: form.dataset.targetType, reason });
+      await callBackend('submitReport', { targetId: form.dataset.targetId, targetType: form.dataset.targetType, reason });
       state.reportOpen = false; state.message = tr('reportSent');
     });
     return;
@@ -524,8 +529,8 @@ async function handleSubmit(event) {
     const file = new FormData(form).get('evidence');
     if (!(file instanceof File) || !file.size || file.size > 10 * 1024 * 1024) { state.error = tr('evidence'); render(); return; }
     await withLoading(async () => {
-      const result = await callTownTap('requestBusinessVerification', { profileId: form.dataset.profileId });
-      await uploadVerificationEvidence(result.storagePath, file, state.user.uid);
+      const result = await callBackend('requestBusinessVerification', { profileId: form.dataset.profileId });
+      await (await import('./evidence.js')).uploadVerificationEvidence(result.storagePath, file, state.user.uid);
       state.message = tr('verificationSent');
       await loadProfileList();
     });
@@ -541,18 +546,24 @@ window.addEventListener('hashchange', loadRouteData);
 window.addEventListener('online', () => { state.offline = false; render(); });
 window.addEventListener('offline', () => { state.offline = true; render(); });
 
-if (firebaseReadyForApp) {
-  onAuthStateChanged(auth, async (user) => {
+import('./firebase.js').then(({ firebaseIsEmulated: emulated, firebaseLiveDevBlocked: liveDevBlocked, firebaseReadyForApp: ready, auth }) => {
+  firebaseIsEmulated = emulated;
+  firebaseLiveDevBlocked = liveDevBlocked;
+  firebaseReadyForApp = ready;
+  if (!ready) { render(); return; }
+  return import('firebase/auth').then(({ onAuthStateChanged }) => onAuthStateChanged(auth, async (user) => {
     state.user = user;
     state.profiles = [];
     state.saved = [];
     state.error = '';
     state.codeSent = false;
     await loadRouteData();
-  });
-} else {
+  }));
+}).catch((error) => {
+  console.error(error);
+  state.error = tr('error');
   render();
-}
+});
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}service-worker.js`).catch(() => {}));

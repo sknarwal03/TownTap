@@ -29,7 +29,7 @@ TownTap is a bilingual digital card, private smart phonebook, and local business
 - PWA manifest/icon and network-only, no-store service worker; basic loading, error, offline, and reduced-motion/accessibility support.
 - Pending verification request references now survive profile edits; concurrent submissions reuse one request, and approval rechecks the current active business inside its transaction.
 - GitHub Pages frontend workflow builds and tests `dist/` under `/TownTap/`; PWA manifest, icons and service worker respect the repository path. Repository Pages Source must be set to GitHub Actions. Live site deployment is not established by local tests.
-- Client SDKs for callable Functions, Storage evidence, and QR generation now load on demand; the production initial JavaScript chunk dropped from about 650 kB to about 222 kB.
+- Client SDKs for callable Functions, Storage evidence, and QR generation load on demand. A follow-up lazy-loads Firebase bootstrap/auth plus callable/evidence modules; the production build has not been rerun for this follow-up.
 - Profile validation enforces a display name and a contact path; Business Listings require a category and city/service area. Discoverable listings require their name, category, and location field to be Public.
 - The approved five-record account cap is enforced in a server transaction using `userProfileCounters`, with a matching My Cards limit message.
 - Implementation/setup guide: `docs/12-FIREBASE-IMPLEMENTATION-AND-LOCAL-TESTING.md`.
@@ -44,7 +44,7 @@ TownTap is a bilingual digital card, private smart phonebook, and local business
 - Callable integration tests cover core card/privacy/share/saved-contact flows and business evidence/review, moderator authorization, report dismissal/unpublish and audit records. Business/moderation browser E2E remains missing. Core Alpha browser journeys and generated QR decoding are now covered at desktop/mobile Chromium viewports; production OTP, physical devices and screen readers remain unverified.
 - Cloud Functions emulator runs under the declared Node 22 runtime. Frontend/rules tooling uses Node 24, matching the Firebase web SDK 13 and rules-unit-testing 6 engine requirements.
 - A fresh production dependency audit reports four high-severity findings through `@grpc/grpc-js` under Firebase Firestore; npm reports no fix available. No forced downgrade or override was applied; resolve via a verified upstream package update before release.
-- Deferred QR, Functions, and Storage code reduced the initial JavaScript chunk to about 222 kB uncompressed. Review end-to-end performance on agreed devices and networks before release.
+- Deferred QR, Firebase bootstrap/auth, callable Functions, and Storage evidence code are split into lazy chunks. The current initial chunk size has not been remeasured after the latest change. Review end-to-end performance on agreed devices and networks before release.
 
 ## Git checkpoint
 
@@ -58,7 +58,7 @@ The cloud checkout has committed baseline `1ebd169ce68e8a04bdd297559368352ac9668
 | `npm run test:functions` | PASS, 7/7 | Domain logic. These are unit tests, not Cloud Functions integration tests. |
 | `npm run test:rules` | PASS, 3/3 | Firestore default-deny and Storage evidence checks against local Auth/Firestore/Storage emulators. Emulator logs confirm expected denied requests. |
 | `npm run test:functions:emulator` | PASS, 10/10 | 2 core card and 8 business/moderation tests against local Auth/Firestore/Functions/Storage; Node 22 Functions. Covers real token authorization, evidence, badges, audit records, concurrent requests, lifecycle changes and unpublish restrictions. |
-| `npm run build` | PASS, rerun 2026-10-26 | Vite production build; initial chunk is 222 kB uncompressed (about 49.6 kB gzip), with QR/Functions/Storage chunks deferred until needed. No large-chunk warning. |
+| `npm run build` | PASS, before latest lazy-load change | Earlier Vite build had a 222 kB initial chunk (about 49.6 kB gzip). Firebase bootstrap/auth and callable/evidence import changes have not been rebuilt yet. |
 | `node --check` | PASS, 2026-10-26 | Checked the changed client and Functions source files for syntax errors. |
 | Chrome UI smoke | PASS, limited | Welcome, Discover and Settings render; Hindi switch updates labels/title. Desktop, signed-out only. |
 | `npm audit --omit=dev --audit-level=high` | FAIL, rerun 2026-10-26 | 4 high findings via `@grpc/grpc-js` under Firebase Firestore; npm reports no fix available. No forced downgrade or override applied. |
