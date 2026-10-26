@@ -18,6 +18,7 @@ Audit date: 2026-10-24. This file replaces the earlier inventory, which describe
 | `10-OPEN-DECISIONS.md` | Pending choices and documentation gaps. |
 | `11-TECHNICAL-ARCHITECTURE-AND-DATA-API-PLAN.md` | Logical planning draft with Firebase as the current implementation target; no approved physical schema or contract. |
 | `12-FIREBASE-IMPLEMENTATION-AND-LOCAL-TESTING.md` | Emulator implementation details, callable surface, privacy behavior, assumptions, test commands, and production boundaries. |
+| `13-PRODUCTION-DEPLOYMENT-READINESS.md` | Staged production-readiness checklist, current blockers, and release evidence needed before deployment. |
 | `MASTER-PROJECT-STATUS.md` | Current implementation progress, verification, blockers, and next work. |
 | `AGENTS.md` | Repository guidance; not a product document. |
 

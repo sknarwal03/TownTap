@@ -1,8 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
-import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
-import { connectStorageEmulator, getStorage } from 'firebase/storage';
 
 const env = import.meta.env;
 const emulatorMode = env.VITE_USE_FIREBASE_EMULATORS === 'true';
@@ -19,9 +16,8 @@ export const firebaseIsEmulated = emulatorMode;
 
 let app;
 let auth;
-let db;
-let functions;
-let storage;
+let functionsPromise;
+let storagePromise;
 
 if (firebaseReadyForApp) {
   app = initializeApp({
@@ -32,17 +28,31 @@ if (firebaseReadyForApp) {
     appId: env.VITE_FIREBASE_APP_ID,
   });
   auth = getAuth(app);
-  db = getFirestore(app);
-  functions = getFunctions(app, 'us-central1');
-  storage = getStorage(app);
 
   if (emulatorMode) {
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-    connectFirestoreEmulator(db, '127.0.0.1', 8080);
-    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-    connectStorageEmulator(storage, '127.0.0.1', 9199);
     auth.settings.appVerificationDisabledForTesting = true;
   }
 }
 
-export { app, auth, db, functions, storage };
+export async function getFirebaseFunctions() {
+  if (!firebaseReadyForApp) throw new Error('Firebase is not configured.');
+  functionsPromise ??= import('firebase/functions').then(({ connectFunctionsEmulator, getFunctions }) => {
+    const instance = getFunctions(app, 'us-central1');
+    if (emulatorMode) connectFunctionsEmulator(instance, '127.0.0.1', 5001);
+    return instance;
+  });
+  return functionsPromise;
+}
+
+export async function getFirebaseStorage() {
+  if (!firebaseReadyForApp) throw new Error('Firebase is not configured.');
+  storagePromise ??= import('firebase/storage').then(({ connectStorageEmulator, getStorage }) => {
+    const instance = getStorage(app);
+    if (emulatorMode) connectStorageEmulator(instance, '127.0.0.1', 9199);
+    return instance;
+  });
+  return storagePromise;
+}
+
+export { app, auth };

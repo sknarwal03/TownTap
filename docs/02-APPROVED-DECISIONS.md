@@ -194,6 +194,76 @@ Any future modification should preserve the original decision, note the revision
 - Account recovery proof, OTP numerical limits, and anti-abuse mechanisms.
 - Detailed bilingual fallback behavior, pilot discovery ranking, and release acceptance thresholds.
 
+## Product owner confirmations
+
+- **UX-ROUTE-01 — Guest destinations (confirmed 2026-10-26):** Guests may view Public Cards and browse Discover. The exact guest return paths and protected Admin entry remain open.
+- **UX-ROUTE-02 — Admin access (confirmed 2026-10-26):** The Admin screen is restricted to signed-in, authorized moderators and administrators.
+- **UX-ROUTE-03 — Guest save return path (confirmed 2026-10-26):** When a guest signs in after being prompted to save a card, TownTap returns them to that card to complete the save flow.
+- **DATA-TYPES-01 — Multiple cards (confirmed 2026-10-26):** One account may create and own multiple cards/listings. Subsequent entries below define their types, fields, and account limit.
+- **DATA-TYPES-02 — Record types (confirmed 2026-10-26):** TownTap supports three distinct record types: Personal Card, Professional Card, and owned Business Listing.
+- **DATA-TYPES-03 — Personal/professional separation (confirmed 2026-10-26):** Personal Cards and Professional Cards use separate fields and separate privacy settings.
+- **DATA-TYPES-04 — Required card fields (confirmed 2026-10-26):** Every card requires a display name and at least one valid contact method before it can be saved.
+- **DATA-TYPES-05 — Required business fields (confirmed 2026-10-26):** Every Business Listing requires a business name and category.
+- **DATA-TYPES-06 — Required service area (confirmed 2026-10-26):** Every Business Listing requires a city or service area.
+- **DATA-TYPES-07 — Discoverable listing fields (confirmed 2026-10-26):** For a Business Listing to appear in Discover, its business name, category, and city/service area must be Public. Since all fields default Private, the owner must explicitly make these fields Public.
+- **DATA-TYPES-08 — Per-account record limit (confirmed 2026-10-26):** TownTap will not impose a hard cap on the number of cards or Business Listings an account may create.
+- **DATA-TYPES-09 — Business Listing collaborators (confirmed 2026-10-26):** A Business Listing may be managed by multiple authorized people, including its owner and staff. The role and permission model remains to be specified.
+- **DATA-TYPES-10 — Normal-user card cap (revision, confirmed 2026-10-26):** A normal user may create up to five cards. This revises DATA-TYPES-08 for normal-user records. The earlier no-cap statement is retained as decision history, not current policy.
+- **DATA-TYPES-11 — Listing count within card cap (confirmed 2026-10-26):** Business Listings count toward the normal user's five-card limit.
+- **DATA-TYPES-12 — Launch field set (confirmed 2026-10-26):** The PRD's listed card and business-listing fields form the complete launch schema; user-defined custom fields are out of launch scope. Field formats, type-specific applicability, and validation remain to be specified.
+- **DATA-TYPES-13 — Staff editing and transfer (confirmed 2026-10-26):** Owner-authorized Business Listing staff may edit listing details but may not transfer listing ownership.
+- **DATA-TYPES-14 — Publication authority (confirmed 2026-10-26):** Only the Business Listing owner may publish or unpublish the listing; authorized staff cannot perform either action.
+- **PRIVACY-01 — All-field default (confirmed 2026-10-26):** Every card field defaults to Private, not only the sensitive fields already listed in UX-11. An owner must deliberately change a field's audience to share it.
+
+- **ALPHA-OPS-01 — Moderator unpublish authority:** The product owner confirmed that designated moderators may unpublish a reported business as part of Alpha moderation. This confirms the existing UX-15 requirement; report categories, appeals, support, and audit retention remain unspecified.
+- **ALPHA-OPS-02 — Report dismissal:** The product owner confirmed moderators may dismiss a report without taking action on the business.
+- **ALPHA-OPS-03 — Audit logging:** The product owner confirmed every moderator action must be recorded in the moderation audit log. Audit retention and tamper-resistance requirements remain to be specified.
+- **ALPHA-OPS-04 — Appeals:** The product owner confirmed business owners may appeal moderator decisions. Appeal submission, reviewer independence, timelines, and outcomes remain to be specified.
+- **ALPHA-OPS-05 — Independent appeal reviewer:** The product owner confirmed an appeal must be reviewed by a different moderator from the one who made the original decision.
+- **ALPHA-OPS-06 — Decision during appeal:** The product owner confirmed the original moderation decision remains in effect while the appeal is reviewed.
+- **ALPHA-OPS-07 — Business-owner notice:** The product owner confirmed business owners must be notified when a moderator takes action on their business. Notice channel, content, and timing remain to be specified.
+- **ALPHA-OPS-08 — Notice channel:** The product owner confirmed moderator notices and appeal updates are delivered inside the app. Notice content and timing remain to be specified.
+- **ALPHA-OPS-09 — Appeal limit:** The product owner confirmed a business owner may appeal each moderation decision once.
+- **ALPHA-OPS-10 — Appeal submission deadline:** The product owner confirmed appeals must be submitted within 10 days of the moderation decision notice.
+- **ALPHA-OPS-11 — Appeal decision deadline:** The product owner decided not to require a fixed deadline for moderators to decide appeals.
+- **ALPHA-OPS-12 — Pending appeal updates:** The product owner confirmed business owners receive in-app status updates every 7 days while their appeal is pending. Update content remains to be specified.
+- **ALPHA-OPS-13 — Appeal outcome authority:** The product owner confirmed the appeal reviewer may overturn the original moderation decision. Permitted outcome options and resulting actions remain to be specified.
+- **ALPHA-OPS-14 — Appeal outcomes:** The product owner confirmed the appeal reviewer may uphold or overturn the original decision, but may not substitute a different action.
+- **ALPHA-OPS-15 — Restore after successful appeal:** The product owner confirmed that overturning an unpublish decision automatically restores the business listing.
+- **ALPHA-OPS-16 — Appeal report dismissal:** The product owner confirmed business owners may appeal a moderator's report dismissal, subject to the existing one-appeal-per-decision limit.
+- **ALPHA-OPS-17 — Appeal eligibility:** The product owner confirmed only the business owner may appeal a moderation decision about that business.
+- **ALPHA-OPS-18 — Appeal finality:** The product owner confirmed the appeal decision is final and cannot be appealed again.
+- **ALPHA-OPS-19 — Appeal materials access:** The product owner confirmed moderators reviewing an appeal may view the business owner's appeal comments and supporting evidence. Evidence handling, retention, and access logging remain to be specified.
+- **ALPHA-OPS-20 — Moderator team:** The product owner confirmed TownTap will designate a moderator team to review reports and appeals. Team membership, assignment, and coverage remain to be specified.
+- **ALPHA-OPS-21 — Individual moderator accounts:** The product owner confirmed moderators must use named individual accounts so actions can be attributed to a person.
+- **ALPHA-OPS-22 — Moderator offboarding:** The product owner confirmed moderator access must be removed immediately when a person leaves the moderator team.
+- **ALPHA-OPS-23 — Unpublish approval:** The product owner confirmed two moderators must approve a business unpublish decision.
+- **ALPHA-OPS-24 — Other moderation approvals:** The product owner confirmed two-moderator approval is not required for moderation actions other than business unpublishing, including report dismissal and appeal outcomes. Business verification also does not require two-moderator approval.
+- **ALPHA-OPS-25 — Audit retention:** The product owner decided moderation audit logs are retained for 6 months, then deleted.
+- **ALPHA-OPS-26 — Audit immutability:** The product owner confirmed moderators must not be able to edit or delete audit-log entries.
+- **ALPHA-OPS-27 — Audit event fields:** The product owner confirmed each audit entry records the moderator, action, timestamp, and affected business or report.
+- **ALPHA-OPS-28 — Audit-log access and storage:** The product owner confirmed audit logs are stored separately from regular app data, with access limited to authorized personnel.
+- **ALPHA-OPS-29 — Authorized audit-log roles:** The product owner confirmed only a designated audit administrator and a security lead may access audit logs.
+- **ALPHA-OPS-30 — Moderation support contact:** The product owner confirmed business owners must be told how to contact TownTap support about a moderation decision. Support handling remains to be specified.
+- **ALPHA-OPS-31 — Support contact channel:** The product owner confirmed moderation support contact is provided by email. The address and support handling remain to be specified.
+- **ALPHA-OPS-32 — Support receipt confirmation:** The product owner confirmed TownTap must email a confirmation when it receives a moderation support request. Confirmation content remains to be specified.
+- **ALPHA-OPS-33 — Support response target:** The product owner set a target of a substantive email response within 5 business days for moderation support requests.
+- **ALPHA-OPS-34 — Published support email:** The product owner confirmed the moderation support email address must be published in the app. The actual address remains to be selected.
+- **ALPHA-OPS-35 — Moderation notice content:** The product owner confirmed in-app notices must tell the business owner what action was taken and why.
+- **ALPHA-OPS-36 — Appeal material retention:** The product owner confirmed appeal comments and supporting evidence are deleted 6 months after the appeal decision.
+- **ALPHA-OPS-37 — Appeal evidence access log:** The product owner confirmed access to appeal evidence must be logged with the identity of the person accessing it and the access timestamp.
+- **ALPHA-OPS-38 — Support request reference:** The product owner confirmed the email receipt confirmation must include a reference number for the support request.
+- **ALPHA-OPS-39 — Automatic receipt confirmation:** The product owner confirmed the receipt confirmation is sent automatically when the support request arrives.
+- **ALPHA-OPS-40 — Appeal assignment:** The product owner confirmed each appeal is assigned to a named moderator when received. The independent-review requirement still applies to ensure the appeal reviewer differs from the original decision-maker.
+- **ALPHA-OPS-41 — Unpublish approver assignment:** The product owner confirmed each business unpublish decision is assigned to two named moderators for approval.
+- **ALPHA-OPS-42 — Report assignment:** The product owner confirmed each incoming report is assigned to a named moderator for review.
+- **ALPHA-OPS-43 — Moderator appointment:** The product owner confirmed a designated TownTap administrator appoints moderator-team members.
+- **ALPHA-OPS-44 — Support response content:** The product owner confirmed substantive support responses state the request status and any next steps for the owner.
+- **ALPHA-OPS-45 — Audit-log access MFA:** The product owner confirmed access to moderation audit logs requires multifactor authentication (MFA).
+- **ALPHA-OPS-46 — Independent unpublish appeal reviewer:** The product owner confirmed an appeal of a business unpublish must be reviewed by a moderator who was not one of the two original approvers.
+- **ALPHA-OPS-47 — Moderator team minimum:** The product owner confirmed the moderator team must have at least two members; a three-member minimum is not required.
+- **ALPHA-OPS-48 — External independent appeal reviewer:** The product owner confirmed that if both moderator-team members approved an unpublish, an appointed moderator from outside the team may independently review its appeal.
+
 ## Change management
 
 Any changes to these approved decisions require explicit owner approval and a recorded rationale. Keep earlier decision records intact; reconcile derived planning documents with this record.

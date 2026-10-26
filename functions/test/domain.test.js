@@ -9,16 +9,21 @@ import {
 } from '../src/domain.js';
 
 function profileInput(overrides = {}) {
+  const { fields: overrideFields, ...otherOverrides } = overrides;
   return {
     type: 'personal',
     visibility: 'private',
-    fields: { displayName: { value: 'Asha', audience: 'private' } },
-    ...overrides,
+    ...otherOverrides,
+    fields: {
+      displayName: { value: 'Asha', audience: 'private' },
+      phone: { value: '+911234567890', audience: 'private' },
+      ...overrideFields,
+    },
   };
 }
 
 test('profiles start private and all unspecified fields are private', () => {
-  const profile = normalizeProfileInput({ type: 'personal', fields: { displayName: { value: 'Asha' } } });
+  const profile = normalizeProfileInput({ type: 'personal', fields: { displayName: { value: 'Asha' }, phone: { value: '+911234567890' } } });
   assert.equal(profile.visibility, 'private');
   assert.equal(profile.fields.phone.audience, 'private');
   assert.equal(profile.fields.displayName.audience, 'private');

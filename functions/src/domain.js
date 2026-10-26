@@ -60,8 +60,15 @@ export function normalizeProfileInput(input) {
   if (discoverable && (type !== 'business' || visibility !== 'public')) {
     throw new TypeError('Only a Public business profile can be listed in Discover');
   }
-  if (discoverable && ['displayName', 'category', 'city'].some((field) => fields[field].audience !== 'public' || !fields[field].value)) {
-    throw new TypeError('A discoverable business needs public name, category, and city');
+  const hasPublicLocation = ['city', 'serviceArea'].some((field) => fields[field].audience === 'public' && fields[field].value);
+  if (discoverable && (['displayName', 'category'].some((field) => fields[field].audience !== 'public' || !fields[field].value) || !hasPublicLocation)) {
+    throw new TypeError('A discoverable business needs public name, category, and city or service area');
+  }
+  if (!['phone', 'whatsapp', 'email', 'website'].some((field) => fields[field].value)) {
+    throw new TypeError('At least one valid contact method is required');
+  }
+  if (type === 'business' && (!fields.category.value || (!fields.city.value && !fields.serviceArea.value))) {
+    throw new TypeError('Business name, category, and city or service area are required');
   }
 
   return { type, visibility, discoverable, fields };
@@ -106,13 +113,14 @@ export function projectProfile(profile, audience) {
 export function directoryProjection(profile) {
   if (profile.type !== 'business' || profile.visibility !== 'public' || profile.status !== 'active' || !profile.discoverable) return null;
   const fields = projectProfile(profile, 'public').fields;
-  if (!fields.displayName || !fields.category || !fields.city) return null;
+  const city = fields.city || fields.serviceArea;
+  if (!fields.displayName || !fields.category || !city) return null;
   return {
     profileId: profile.id,
     name: fields.displayName,
     category: fields.category,
-    city: fields.city,
-    cityId: fields.city.toLocaleLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+    city,
+    cityId: city.toLocaleLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
     categoryId: fields.category.toLocaleLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
     ...(fields.bio ? { bio: fields.bio } : {}),
     ...(fields.phone ? { phone: fields.phone } : {}),

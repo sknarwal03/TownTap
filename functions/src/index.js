@@ -16,6 +16,7 @@ const db = getFirestore();
 const MAX_NOTE_LENGTH = 1000;
 const MAX_TAGS = 20;
 const MAX_TAG_LENGTH = 40;
+const MAX_PROFILES_PER_OWNER = 5;
 const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT || 'demo-towntap-local'}.appspot.com`;
 
 function requireUser(request) {
@@ -84,6 +85,19 @@ export const upsertProfile = onCall({ region: 'us-central1', maxInstances: 10 },
   const profile = await db.runTransaction(async (transaction) => {
     const oldSnap = await transaction.get(ref);
     if (oldSnap.exists && oldSnap.get('ownerUid') !== uid) throw new HttpsError('permission-denied', 'You cannot edit this profile.');
+    if (!oldSnap.exists) {
+      const counterRef = db.collection('userProfileCounters').doc(uid);
+      const counterSnap = await transaction.get(counterRef);
+      let currentCount = counterSnap.exists ? counterSnap.get('profileCount') : null;
+      if (currentCount === null) {
+        const ownedProfiles = await transaction.get(db.collection('profiles').where('ownerUid', '==', uid).limit(MAX_PROFILES_PER_OWNER));
+        currentCount = ownedProfiles.size;
+      }
+      if (currentCount >= MAX_PROFILES_PER_OWNER) {
+        throw new HttpsError('resource-exhausted', `An account can own up to ${MAX_PROFILES_PER_OWNER} cards or business listings.`);
+      }
+      transaction.set(counterRef, { profileCount: currentCount + 1, updatedAt: FieldValue.serverTimestamp() });
+    }
     const previous = oldSnap.exists ? oldSnap.data() : null;
     const next = {
       ...normalized,
